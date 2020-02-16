@@ -5,61 +5,63 @@ services:
   nginx:
     depends_on:
       - wordpress
-    image: nginx:1.14.2
+    image: nginx:1.15.12-alpine
+    restart: unless-stopped
     ports:
       - '80:80'
     volumes:
       - ./nginx:/etc/nginx/conf.d
       - ./logs/nginx:/var/log/nginx
-      - ./wordpress:/var/www/html
-    restart: always
+      - wordpress:/var/www/html
     networks:
       - wpsite
+
   # Database
   mysql:
-    image: mysql:5.7
+    image: mysql:8
+    restart: unless-stopped
+    env_file: .env
     volumes:
         - ./db:/var/lib/mysql
-    environment:
-        - MYSQL_ROOT_PASSWORD=nosenose
-        - MYSQL_DATABASE=wordpress
-        - MYSQL_USER=wordpress
-        - MYSQL_PASSWORD=wordpress
-    restart: always
+    command: '--default-authentication-plugin=mysql_native_password'
     networks:
       - wpsite
+
   # phpMyAdmin
   phpmyadmin:
     depends_on:
       - mysql
     image: phpmyadmin/phpmyadmin:4.6
+    restart: unless-stopped
+    env_file: .env
     ports:
       - '8080:80'
     environment:
         - PMA_HOST=mysql
-        - MYSQL_ROOT_PASSWORD=nosenose 
-    restart: always
     networks:
       - wpsite
+
   # Worpress
   wordpress:
     depends_on:
       - mysql
-    image: wordpress:4.7.1-php7.0-fpm
+    image: wordpress:5.3.2-fpm-alpine
+    restart: unless-stopped
     ports:
       - '9000:9000'
     volumes:
-      - ./wordpress:/var/www/html
+      - wordpress:/var/www/html
     environment:
       - WORDPRESS_DB_HOST=mysql:3306
-      - WORDPRESS_DB_NAME=wordpress
+      - WORDPRESS_DB_NAME=$MYSQL_DATABASE
       - WORDPRESS_TABLE_PREFIX=wp_
-      - WORDPRESS_DB_PASSWORD=wordpress
-      - WORDPRESS_DB_USER=wordpress
-    restart: always
+      - WORDPRESS_DB_PASSWORD=$MYSQL_PASSWORD
+      - WORDPRESS_DB_USER=$MYSQL_USER
     networks:
       - wpsite
+
 networks:
   wpsite:
+
 volumes:
   wordpress:
